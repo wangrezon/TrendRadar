@@ -7,6 +7,7 @@ TrendRadar AI 模块
 
 from .analyzer import AIAnalyzer, AIAnalysisResult
 from .translator import AITranslator, TranslationResult, BatchTranslationResult
+from .tools import TushareToolExecutor, TUSHARE_TOOLS_SCHEMA
 from .formatter import (
     get_ai_analysis_renderer,
     render_ai_analysis_markdown,
@@ -25,6 +26,9 @@ __all__ = [
     "AITranslator",
     "TranslationResult",
     "BatchTranslationResult",
+    # 工具
+    "TushareToolExecutor",
+    "TUSHARE_TOOLS_SCHEMA",
     # 格式化
     "get_ai_analysis_renderer",
     "render_ai_analysis_markdown",

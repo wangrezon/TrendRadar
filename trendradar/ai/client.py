@@ -6,9 +6,11 @@ AI 客户端模块
 支持 100+ AI 提供商（OpenAI、DeepSeek、Gemini、Claude、国内模型等）
 """
 
+import json
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
+import litellm
 from litellm import completion
 
 
@@ -57,7 +59,16 @@ class AIClient:
         Raises:
             Exception: API 调用失败时抛出异常
         """
-        # 构建请求参数
+        params = self._build_params(messages, **kwargs)
+
+        # 调用 LiteLLM
+        response = completion(**params)
+
+        # 提取响应内容
+        return response.choices[0].message.content
+
+    def _build_params(self, messages: List[Dict], **kwargs) -> Dict[str, Any]:
+        """构建 LiteLLM completion 请求参数（chat 和 chat_with_tools 共用）。"""
         params = {
             "model": self.model,
             "messages": messages,
@@ -66,20 +77,16 @@ class AIClient:
             "num_retries": kwargs.get("num_retries", self.num_retries),
         }
 
-        # 添加 API Key
         if self.api_key:
             params["api_key"] = self.api_key
 
-        # 添加 API Base（如果配置了）
         if self.api_base:
             params["api_base"] = self.api_base
 
-        # 添加 max_tokens（如果配置了且不为 0）
         max_tokens = kwargs.get("max_tokens", self.max_tokens)
         if max_tokens and max_tokens > 0:
             params["max_tokens"] = max_tokens
 
-        # 添加 fallback 模型（如果配置了）
         if self.fallback_models:
             params["fallbacks"] = self.fallback_models
 
@@ -88,11 +95,88 @@ class AIClient:
             if key not in params:
                 params[key] = value
 
-        # 调用 LiteLLM
-        response = completion(**params)
+        return params
 
-        # 提取响应内容
-        return response.choices[0].message.content
+    def chat_with_tools(
+        self,
+        messages: List[Dict],
+        tools: List[Dict],
+        tool_executor: Callable[[str, Dict], str],
+        max_rounds: int = 3,
+        **kwargs
+    ) -> str:
+        """
+        带工具调用的对话（Function Calling / Tool Use）。
+
+        模型可在生成过程中请求调用工具，客户端执行工具后将结果反馈给模型，
+        循环直到模型返回最终文本或达到最大轮数。
+
+        若当前模型不支持 function calling，自动降级为普通 chat()。
+
+        Args:
+            messages: 消息列表
+            tools: 工具 JSON Schema 列表（OpenAI tools 格式）
+            tool_executor: 工具执行回调，签名 (function_name, arguments_dict) -> str
+            max_rounds: 最大工具调用轮数（防止无限循环）
+            **kwargs: 额外参数，会覆盖默认配置
+
+        Returns:
+            str: AI 最终响应内容
+        """
+        # 检测模型是否支持 function calling
+        try:
+            if not litellm.supports_function_calling(model=self.model):
+                print(f"[AI] 模型 {self.model} 不支持 Function Calling，降级为普通对话")
+                return self.chat(messages, **kwargs)
+        except Exception:
+            # supports_function_calling 可能对未知模型抛异常，安全降级
+            print(f"[AI] 无法检测模型 {self.model} 的 Function Calling 支持情况，尝试继续")
+
+        # 复制消息列表，避免修改原始数据
+        messages = list(messages)
+
+        for round_idx in range(max_rounds):
+            params = self._build_params(messages, **kwargs)
+            params["tools"] = tools
+            params["tool_choice"] = "auto"
+
+            response = completion(**params)
+            response_message = response.choices[0].message
+            finish_reason = response.choices[0].finish_reason
+
+            # 如果模型没有请求工具调用，返回最终内容
+            if not response_message.tool_calls:
+                return response_message.content or ""
+
+            # 模型请求了工具调用 —— 追加 assistant 消息
+            messages.append(response_message)
+
+            # 逐个执行工具调用
+            for tool_call in response_message.tool_calls:
+                func_name = tool_call.function.name
+                try:
+                    func_args = json.loads(tool_call.function.arguments)
+                except (json.JSONDecodeError, TypeError):
+                    func_args = {}
+
+                print(f"[AI] 工具调用 #{round_idx + 1}: {func_name}({func_args})")
+
+                # 执行工具
+                tool_result = tool_executor(func_name, func_args)
+
+                # 追加工具结果消息
+                messages.append({
+                    "tool_call_id": tool_call.id,
+                    "role": "tool",
+                    "name": func_name,
+                    "content": tool_result,
+                })
+
+        # 达到最大轮数后，做一次不带 tools 的请求以获取最终回答
+        print(f"[AI] 已达最大工具调用轮数 ({max_rounds})，请求最终回答")
+        params = self._build_params(messages, **kwargs)
+        response = completion(**params)
+        return response.choices[0].message.content or ""
 
     def validate_config(self) -> tuple[bool, str]:
         """

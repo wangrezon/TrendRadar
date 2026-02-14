@@ -7,11 +7,13 @@ AI 分析器模块
 """
 
 import json
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from trendradar.ai.client import AIClient
+from trendradar.ai.tools import TUSHARE_TOOLS_SCHEMA, TushareToolExecutor
 
 
 @dataclass
@@ -48,6 +50,7 @@ class AIAnalyzer:
         analysis_config: Dict[str, Any],
         get_time_func: Callable,
         debug: bool = False,
+        tushare_config: Optional[Dict[str, Any]] = None,
     ):
         """
         初始化 AI 分析器
@@ -57,6 +60,7 @@ class AIAnalyzer:
             analysis_config: AI 分析功能配置（language, prompt_file 等）
             get_time_func: 获取当前时间的函数
             debug: 是否开启调试模式
+            tushare_config: Tushare 配置字典（可选）
         """
         self.ai_config = ai_config
         self.analysis_config = analysis_config
@@ -77,6 +81,30 @@ class AIAnalyzer:
         self.include_rank_timeline = analysis_config.get("INCLUDE_RANK_TIMELINE", False)
         self.include_standalone = analysis_config.get("INCLUDE_STANDALONE", False)
         self.language = analysis_config.get("LANGUAGE", "Chinese")
+
+        # 工具配置（Tushare Function Calling）
+        tools_config = analysis_config.get("TOOLS", {})
+        self.tools_enabled = tools_config.get("ENABLED", False)
+        self.tools_max_rounds = tools_config.get("MAX_ROUNDS", 3)
+
+        # 初始化 Tushare 工具执行器
+        self.tool_executor: Optional[TushareToolExecutor] = None
+        if self.tools_enabled:
+            tushare_config = tushare_config or {}
+            tushare_token = tushare_config.get("TOKEN", "") or os.environ.get("TUSHARE_TOKEN", "")
+            if tushare_token:
+                self.tool_executor = TushareToolExecutor(tushare_token)
+                valid_ts, error_ts = self.tool_executor.validate()
+                if not valid_ts:
+                    print(f"[AI] Tushare 工具警告: {error_ts}")
+                    self.tool_executor = None
+                else:
+                    print(f"[AI] 工具: Tushare 已启用 ({len(TUSHARE_TOOLS_SCHEMA)} tools)")
+            else:
+                print("[AI] 工具: 已启用但未配置 Tushare Token，工具不可用")
+        else:
+            if self.debug:
+                print("[AI] 工具: 未启用")
 
         # 加载提示词模板
         self.system_prompt, self.user_prompt_template = self._load_prompt_template(
@@ -384,11 +412,20 @@ class AIAnalyzer:
         return news_content, rss_content, hotlist_total, rss_total, total_count
 
     def _call_ai(self, user_prompt: str) -> str:
-        """调用 AI API（使用 LiteLLM）"""
+        """调用 AI API（使用 LiteLLM），若启用了工具则通过 Function Calling 调用。"""
         messages = []
         if self.system_prompt:
             messages.append({"role": "system", "content": self.system_prompt})
         messages.append({"role": "user", "content": user_prompt})
+
+        # 若工具可用，使用带工具调用的对话
+        if self.tool_executor is not None:
+            return self.client.chat_with_tools(
+                messages=messages,
+                tools=TUSHARE_TOOLS_SCHEMA,
+                tool_executor=self.tool_executor.execute,
+                max_rounds=self.tools_max_rounds,
+            )
 
         return self.client.chat(messages)
 

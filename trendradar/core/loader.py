@@ -288,6 +288,9 @@ def _load_ai_analysis_config(config_data: Dict) -> Dict:
 
     enabled_env = _get_env_bool("AI_ANALYSIS_ENABLED")
 
+    # 工具配置
+    tools_config = ai_config.get("tools", {})
+
     return {
         "ENABLED": enabled_env if enabled_env is not None else ai_config.get("enabled", False),
         "LANGUAGE": ai_config.get("language", "Chinese"),
@@ -297,6 +300,10 @@ def _load_ai_analysis_config(config_data: Dict) -> Dict:
         "INCLUDE_RSS": ai_config.get("include_rss", True),
         "INCLUDE_RANK_TIMELINE": ai_config.get("include_rank_timeline", False),
         "INCLUDE_STANDALONE": ai_config.get("include_standalone", False),
+        "TOOLS": {
+            "ENABLED": tools_config.get("enabled", False),
+            "MAX_ROUNDS": tools_config.get("max_rounds", 3),
+        },
     }
 
 
@@ -310,6 +317,14 @@ def _load_ai_translation_config(config_data: Dict) -> Dict:
         "ENABLED": enabled_env if enabled_env is not None else trans_config.get("enabled", False),
         "LANGUAGE": _get_env_str("AI_TRANSLATION_LANGUAGE") or trans_config.get("language", "English"),
         "PROMPT_FILE": trans_config.get("prompt_file", "ai_translation_prompt.txt"),
+    }
+
+
+def _load_tushare_config(config_data: Dict) -> Dict:
+    """加载 Tushare 配置"""
+    ts_config = config_data.get("tushare", {})
+    return {
+        "TOKEN": _get_env_str("TUSHARE_TOKEN") or ts_config.get("token", ""),
     }
 
 
@@ -543,6 +558,9 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
 
     # AI 翻译配置
     config["AI_TRANSLATION"] = _load_ai_translation_config(config_data)
+
+    # Tushare 配置
+    config["TUSHARE"] = _load_tushare_config(config_data)
 
     # 推送内容显示配置
     config["DISPLAY"] = _load_display_config(config_data)

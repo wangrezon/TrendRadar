@@ -449,6 +449,30 @@ ai_analysis:
     # true: 传递完整排名变化轨迹（如 1(09:30)→2(10:00)→0(11:00)）
     # 启用后 AI 能更精确分析热度趋势，但会额外增加 token 消耗（0.5 倍到 1 倍）
 
+  # Tushare 工具配置（通过 Function Calling 让 AI 自主查询实时金融数据）
+  # 启用后，AI 可在分析过程中按需调用 Tushare 接口查询概念板块行情、成分股、
+  # 大盘指数和个股指标，用真实市场数据增强板块轮动分析。
+  #
+  # ⚠️ 前置条件：
+  #   1. 需要配置下方 tushare.token（或环境变量 TUSHARE_TOKEN）
+  #   2. 需要使用支持 Function Calling 的模型（如 deepseek/deepseek-chat、openai/gpt-4o）
+  #      当前默认的 deepseek-reasoner 不支持 FC，启用工具后请切换模型
+  #   3. 每次分析可能产生额外 1-5 次 LLM 请求（工具调用轮次），会增加 token 消耗
+  tools:
+    enabled: ture # 是否启用工具调用
+    max_rounds: 3 # 单次分析最大工具调用轮数（防止无限循环，建议 2-5）
+
+# ===============================================================
+# 9.5 Tushare 数据源配置
+#
+# 为 AI 分析提供实时金融数据查询能力
+# 需先在 https://tushare.pro 注册获取 Token
+# 部分接口需要积分：ths_daily/ths_member 需 6000 积分，
+#                    index_daily/daily_basic 需 2000 积分
+# ===============================================================
+tushare:
+  token: "" # Tushare Pro API Token（建议使用环境变量 TUSHARE_TOKEN）
+
 # ===============================================================
 # 10. AI 翻译功能
 #

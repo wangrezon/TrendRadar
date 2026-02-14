@@ -479,7 +479,8 @@ class NewsAnalyzer:
         try:
             ai_config = self.ctx.config.get("AI", {})
             debug_mode = self.ctx.config.get("DEBUG", False)
-            analyzer = AIAnalyzer(ai_config, analysis_config, self.ctx.get_time, debug=debug_mode)
+            tushare_config = self.ctx.config.get("TUSHARE", {})
+            analyzer = AIAnalyzer(ai_config, analysis_config, self.ctx.get_time, debug=debug_mode, tushare_config=tushare_config)
 
             # 确定 AI 分析使用的模式
             ai_mode_config = analysis_config.get("MODE", "follow_report")
