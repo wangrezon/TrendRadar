@@ -114,6 +114,19 @@ class AIAnalyzer:
 
         return system_prompt, user_prompt
 
+    def _get_concept_sectors_text(self) -> str:
+        """从 config/concept_sectors.txt 读取概念板块列表（已是目标表格格式，直接返回）。"""
+        config_dir = Path(__file__).parent.parent.parent / "config"
+        sectors_path = config_dir / "concept_sectors.txt"
+        if not sectors_path.exists():
+            return "(概念板块列表文件 config/concept_sectors.txt 未找到)"
+        content = sectors_path.read_text(encoding="utf-8")
+        lines = [
+            line for line in content.splitlines()
+            if line.strip() and not line.strip().startswith("#")
+        ]
+        return "\n".join(lines)
+
     def analyze(
         self,
         stats: List[Dict],
@@ -196,6 +209,9 @@ class AIAnalyzer:
         user_prompt = user_prompt.replace("{news_content}", news_content)
         user_prompt = user_prompt.replace("{rss_content}", rss_content)
         user_prompt = user_prompt.replace("{language}", self.language)
+
+        concept_sectors_text = self._get_concept_sectors_text()
+        user_prompt = user_prompt.replace("{concept_sectors}", concept_sectors_text)
 
         # 构建独立展示区内容
         standalone_content = ""
