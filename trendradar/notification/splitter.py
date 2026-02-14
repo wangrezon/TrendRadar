@@ -138,7 +138,7 @@ def split_content_into_batches(
 
     # 构建统一的头部（总是显示总新闻数、时间和类型）
     if format_type in ("wework", "bark"):
-        # base_header = f"**总新闻数：** {total_titles}\n"
+        base_header = f"**总新闻数：** {total_titles}\n"
         base_header += ai_stats_line
         base_header += f"**时间：** {now.strftime('%Y-%m-%d %H:%M:%S')}\n"
         base_header += f"**类型：** {report_type}\n\n"
