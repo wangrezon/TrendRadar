@@ -51,28 +51,28 @@ schedule:
 platforms:
   enabled: true # 是否启用热榜平台抓取
   sources:
+    - id: "cls-hot"
+      name: "财联社热门"
+    - id: "wallstreetcn-hot"
+      name: "华尔街见闻"
+    - id: "zhihu"
+      name: "知乎"
+    - id: "weibo"
+      name: "微博"
     - id: "toutiao"
       name: "今日头条"
     - id: "baidu"
       name: "百度热搜"
-    - id: "wallstreetcn-hot"
-      name: "华尔街见闻"
     - id: "thepaper"
       name: "澎湃新闻"
-    - id: "bilibili-hot-search"
-      name: "bilibili 热搜"
-    - id: "cls-hot"
-      name: "财联社热门"
+    - id: "cls-telegraph"
+      name: "财联社电报"
+    - id: "jin10"
+      name: "金十数据"
     - id: "ifeng"
       name: "凤凰网"
-    - id: "tieba"
-      name: "贴吧"
-    - id: "weibo"
-      name: "微博"
-    - id: "douyin"
-      name: "抖音"
-    - id: "zhihu"
-      name: "知乎"
+    - id: "xueqiu"
+      name: "雪球"
 
 # ===============================================================
 # 3. 数据源 - RSS 订阅
@@ -117,14 +117,14 @@ rss:
     - id: "yahoo-finance"
       name: "雅虎财经"
       url: "https://finance.yahoo.com/news/rssindex"
-      enabled: false # 禁用
+      enabled: true # 海外市场/美联储等对 A 股影响
 
-    # 自定义源示例
+    # 可选：若找到财新、东方财富、金十等 RSS 可在此添加
     # - id: "custom-feed"
     #   name: "自定义源"
     #   url: "https://example.com/feed.xml"
     #   enabled: false
-    #   max_age_days: 0               # 示例：禁用过滤，推送所有文章
+    #   max_age_days: 0
 
 # ===============================================================
 # 4. 报告模式
@@ -146,7 +146,7 @@ rss:
 # ===============================================================
 report:
   mode:
-    "current" # 可选: daily | current | incremental
+    "daily" # 可选: daily | current | incremental
     # ⚠️ 开启调度系统后，此值会被当前时间段的 report_mode 覆盖
 
   display_mode:
@@ -210,7 +210,7 @@ display:
   #   - AI 分析：由 ai.include_standalone 开关控制，将完整数据送入 AI 做深度分析
   # 两者共享此处的平台/RSS 配置，但开关互相独立（可只开 AI 分析、不推送展示）
   standalone:
-    platforms: ["zhihu", "wallstreetcn-hot"] # 热榜平台 ID 列表（如 ["zhihu", "weibo"]）
+    platforms: ["cls-hot", "wallstreetcn-hot", "zhihu"] # A 股向：财联社、华尔街见闻、知乎
     rss_feeds: [] # RSS 源 ID 列表（如 ["hacker-news"]）
     max_items: 20 # 每个源最多展示条数（0=不限制）
 
