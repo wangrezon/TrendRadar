@@ -3,7 +3,8 @@
 Tushare 工具模块
 
 为 AI 分析器提供 Function Calling 工具，通过 Tushare 接口查询实时金融数据。
-支持概念板块行情、成分股、大盘指数、个股日线行情、个股每日指标和涨跌停统计查询。
+支持概念板块行情、成分股、大盘指数、个股日线行情、个股每日指标、涨跌停统计、
+龙虎榜和个股资金流向查询。
 """
 
 import json
@@ -160,6 +161,54 @@ TUSHARE_TOOLS_SCHEMA: List[Dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_top_list",
+            "description": (
+                "获取龙虎榜每日明细数据，包括上榜原因、买入额、卖出额、净买入额、"
+                "成交额占比等。可查看当日哪些股票上了龙虎榜及主力资金动向。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "trade_date": {
+                        "type": "string",
+                        "description": "交易日期，YYYYMMDD 格式。不填则返回最近交易日数据。",
+                    },
+                    "ts_code": {
+                        "type": "string",
+                        "description": "股票代码，可选。填写则只返回该股票的龙虎榜信息。",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_moneyflow",
+            "description": (
+                "获取个股资金流向数据，包括大单、中单、小单的买入卖出金额和净流入。"
+                "用于判断主力资金是否在流入或流出某只股票。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ts_code": {
+                        "type": "string",
+                        "description": "股票代码，如 000001.SZ（平安银行）。",
+                    },
+                    "trade_date": {
+                        "type": "string",
+                        "description": "交易日期，YYYYMMDD 格式。不填则返回最近交易日数据。",
+                    },
+                },
+                "required": ["ts_code"],
+            },
+        },
+    },
 ]
 
 
@@ -202,6 +251,8 @@ class TushareToolExecutor:
             "get_stock_daily_basic": self.get_stock_daily_basic,
             "get_stock_daily": self.get_stock_daily,
             "get_limit_list": self.get_limit_list,
+            "get_top_list": self.get_top_list,
+            "get_moneyflow": self.get_moneyflow,
         }
 
         func = dispatch.get(function_name)
@@ -492,6 +543,138 @@ class TushareToolExecutor:
             )
 
         return "\n".join(lines)
+
+    def get_top_list(
+        self,
+        trade_date: str = "",
+        ts_code: str = "",
+    ) -> str:
+        """
+        获取龙虎榜每日明细。
+
+        Args:
+            trade_date: 交易日期（YYYYMMDD）
+            ts_code: 股票代码（可选）
+
+        Returns:
+            格式化的龙虎榜文本
+        """
+        params = {}
+        if trade_date:
+            params["trade_date"] = trade_date
+        if ts_code:
+            params["ts_code"] = ts_code
+
+        if not params:
+            return "错误：请至少提供交易日期（trade_date）或股票代码（ts_code）之一。"
+
+        fields = (
+            "ts_code,trade_date,name,close,pct_change,turnover_rate,"
+            "amount,l_sell,l_buy,l_amount,net_amount,net_rate,amount_rate,"
+            "float_values,reason"
+        )
+        df = self.api.top_list(**params, fields=fields)
+
+        if df is None or df.empty:
+            return f"未查询到龙虎榜数据（trade_date={trade_date}, ts_code={ts_code}）。可能是非交易日或当日无龙虎榜。"
+
+        df = df.head(30)
+
+        lines = [f"龙虎榜明细（共 {len(df)} 条）："]
+        lines.append(
+            "代码 | 名称 | 收盘 | 涨跌幅(%) | 龙虎榜买入(万) | 龙虎榜卖出(万) | "
+            "龙虎榜净买入(万) | 净买入占比(%) | 成交额占比(%) | 上榜原因"
+        )
+        lines.append("-" * 140)
+        for _, row in df.iterrows():
+            pct = f"{row.get('pct_change', 0):.2f}" if row.get("pct_change") is not None else "-"
+            l_buy = self._fmt_amount(row.get("l_buy"))
+            l_sell = self._fmt_amount(row.get("l_sell"))
+            net = self._fmt_amount(row.get("net_amount"))
+            net_rate = f"{row.get('net_rate', 0):.2f}" if row.get("net_rate") is not None else "-"
+            amt_rate = f"{row.get('amount_rate', 0):.2f}" if row.get("amount_rate") is not None else "-"
+            reason = row.get("reason", "-") or "-"
+            lines.append(
+                f"{row.get('ts_code', '-')} | {row.get('name', '-')} | "
+                f"{row.get('close', '-')} | {pct} | {l_buy} | {l_sell} | "
+                f"{net} | {net_rate} | {amt_rate} | {reason}"
+            )
+
+        return "\n".join(lines)
+
+    def get_moneyflow(
+        self,
+        ts_code: str,
+        trade_date: str = "",
+    ) -> str:
+        """
+        获取个股资金流向。
+
+        Args:
+            ts_code: 股票代码（如 000001.SZ）
+            trade_date: 交易日期（YYYYMMDD）
+
+        Returns:
+            格式化的资金流向文本
+        """
+        params = {"ts_code": ts_code}
+        if trade_date:
+            params["trade_date"] = trade_date
+
+        fields = (
+            "ts_code,trade_date,"
+            "buy_sm_amount,sell_sm_amount,buy_md_amount,sell_md_amount,"
+            "buy_lg_amount,sell_lg_amount,buy_elg_amount,sell_elg_amount,"
+            "net_mf_amount"
+        )
+        df = self.api.moneyflow(**params, fields=fields)
+
+        if df is None or df.empty:
+            return f"未查询到股票 {ts_code} 的资金流向数据。可能是非交易日或代码有误。"
+
+        df = df.head(5)
+
+        lines = [f"股票 {ts_code} 资金流向（共 {len(df)} 条，金额单位：万元）："]
+        for _, row in df.iterrows():
+            td = row.get("trade_date", "-")
+            lines.append(f"\n--- {td} ---")
+
+            buy_sm = row.get("buy_sm_amount") or 0
+            sell_sm = row.get("sell_sm_amount") or 0
+            buy_md = row.get("buy_md_amount") or 0
+            sell_md = row.get("sell_md_amount") or 0
+            buy_lg = row.get("buy_lg_amount") or 0
+            sell_lg = row.get("sell_lg_amount") or 0
+            buy_elg = row.get("buy_elg_amount") or 0
+            sell_elg = row.get("sell_elg_amount") or 0
+
+            net_sm = buy_sm - sell_sm
+            net_md = buy_md - sell_md
+            net_lg = buy_lg - sell_lg
+            net_elg = buy_elg - sell_elg
+            net_main = net_lg + net_elg
+
+            lines.append(f"小单: 买入 {self._fmt_amount(buy_sm)} / 卖出 {self._fmt_amount(sell_sm)} / 净额 {self._fmt_amount(net_sm)}")
+            lines.append(f"中单: 买入 {self._fmt_amount(buy_md)} / 卖出 {self._fmt_amount(sell_md)} / 净额 {self._fmt_amount(net_md)}")
+            lines.append(f"大单: 买入 {self._fmt_amount(buy_lg)} / 卖出 {self._fmt_amount(sell_lg)} / 净额 {self._fmt_amount(net_lg)}")
+            lines.append(f"特大单: 买入 {self._fmt_amount(buy_elg)} / 卖出 {self._fmt_amount(sell_elg)} / 净额 {self._fmt_amount(net_elg)}")
+            lines.append(f"主力净流入(大单+特大单): {self._fmt_amount(net_main)}")
+            lines.append(f"总净流入: {self._fmt_amount(row.get('net_mf_amount'))}")
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def _fmt_amount(value) -> str:
+        """格式化金额（万元），None 显示为 '-'。"""
+        if value is None:
+            return "-"
+        try:
+            v = float(value)
+            if abs(v) >= 10000:
+                return f"{v / 10000:.2f}亿"
+            return f"{v:.0f}万"
+        except (ValueError, TypeError):
+            return str(value)
 
     @staticmethod
     def _fmt(value) -> str:
