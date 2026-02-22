@@ -133,6 +133,6 @@ jobs:
           S3_ENDPOINT_URL: ${{ secrets.S3_ENDPOINT_URL }}
           S3_REGION: ${{ secrets.S3_REGION }}
           GITHUB_ACTIONS: true
-          # 调试：LiteLLM 详细日志（调试完后删除此行）
+          # 调试：LiteLLM 详细日志
           LITELLM_LOG: DEBUG
         run: python -m trendradar
