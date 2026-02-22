@@ -169,10 +169,10 @@ class AIClient:
                 tool_result = tool_executor(func_name, func_args)
 
                 # 打印工具返回结果（截断避免日志过长）
-                result_preview = tool_result[:800] if len(tool_result) > 800 else tool_result
+                result_preview = tool_result[:200] if len(tool_result) > 200 else tool_result
                 print(f"[AI] 工具结果 #{tool_call_seq} ({func_name}): "
                       f"[{len(tool_result)} 字符]\n{result_preview}")
-                if len(tool_result) > 800:
+                if len(tool_result) > 200:
                     print(f"[AI] ... 结果已截断，完整长度 {len(tool_result)} 字符")
 
                 # 追加工具结果消息
