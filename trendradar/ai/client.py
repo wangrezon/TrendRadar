@@ -102,7 +102,7 @@ class AIClient:
         messages: List[Dict],
         tools: List[Dict],
         tool_executor: Callable[[str, Dict], str],
-        max_rounds: int = 10,
+        max_rounds: int = 30,
         **kwargs
     ) -> str:
         """
@@ -135,6 +135,8 @@ class AIClient:
         # 复制消息列表，避免修改原始数据
         messages = list(messages)
 
+        tool_call_seq = 0  # 全局工具调用计数器
+
         for round_idx in range(max_rounds):
             params = self._build_params(messages, **kwargs)
             params["tools"] = tools
@@ -142,12 +144,11 @@ class AIClient:
 
             response = completion(**params)
             response_message = response.choices[0].message
-            finish_reason = response.choices[0].finish_reason
 
             # 如果模型没有请求工具调用，返回最终内容
             if not response_message.tool_calls:
                 content = response_message.content or ""
-                print(f"[AI] 模型响应完成（第 {round_idx + 1} 轮，无更多工具调用，{len(content)} 字符）")
+                print(f"[AI] 模型响应完成（第 {round_idx + 1} 轮，共 {tool_call_seq} 次工具调用，{len(content)} 字符）")
                 return content
 
             # 模型请求了工具调用 —— 追加 assistant 消息
@@ -161,14 +162,15 @@ class AIClient:
                 except (json.JSONDecodeError, TypeError):
                     func_args = {}
 
-                print(f"[AI] 工具调用 #{round_idx + 1}: {func_name}({func_args})")
+                tool_call_seq += 1
+                print(f"[AI] 工具调用 #{tool_call_seq}: {func_name}({func_args})")
 
                 # 执行工具
                 tool_result = tool_executor(func_name, func_args)
 
                 # 打印工具返回结果（截断避免日志过长）
                 result_preview = tool_result[:800] if len(tool_result) > 800 else tool_result
-                print(f"[AI] 工具结果 #{round_idx + 1} ({func_name}): "
+                print(f"[AI] 工具结果 #{tool_call_seq} ({func_name}): "
                       f"[{len(tool_result)} 字符]\n{result_preview}")
                 if len(tool_result) > 800:
                     print(f"[AI] ... 结果已截断，完整长度 {len(tool_result)} 字符")

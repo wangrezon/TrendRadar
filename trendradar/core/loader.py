@@ -302,7 +302,7 @@ def _load_ai_analysis_config(config_data: Dict) -> Dict:
         "INCLUDE_STANDALONE": ai_config.get("include_standalone", False),
         "TOOLS": {
             "ENABLED": tools_config.get("enabled", False),
-            "MAX_ROUNDS": tools_config.get("max_rounds", 3),
+            "MAX_ROUNDS": tools_config.get("max_rounds", 10),
         },
     }
 

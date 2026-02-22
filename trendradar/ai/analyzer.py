@@ -8,6 +8,7 @@ AI 分析器模块
 
 import json
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
@@ -84,7 +85,7 @@ class AIAnalyzer:
         # 工具配置（Tushare Function Calling）
         tools_config = analysis_config.get("TOOLS", {})
         self.tools_enabled = tools_config.get("ENABLED", False)
-        self.tools_max_rounds = tools_config.get("MAX_ROUNDS", 3)
+        self.tools_max_rounds = tools_config.get("MAX_ROUNDS", 10)
 
         # 初始化 Tushare 工具执行器
         self.tool_executor: Optional[TushareToolExecutor] = None
@@ -559,6 +560,40 @@ class AIAnalyzer:
 
         return "\n".join(lines)
 
+    def _extract_json_str(self, response: str) -> str:
+        """
+        从 AI 响应中健壮地提取 JSON 字符串。
+
+        依次尝试：
+        1. ```json ... ``` 代码块（不区分大小写）
+        2. ``` ... ``` 代码块
+        3. 响应中最外层的 { ... } 对象
+        4. 整个响应作为 JSON
+        """
+        # 1) ```json ... ```（不区分大小写，兼容 ```JSON / ```Json 等）
+        m = re.search(r"```json\s*\n?(.*?)```", response, re.DOTALL | re.IGNORECASE)
+        if m:
+            return m.group(1).strip()
+
+        # 2) ``` ... ```（无语言标签或标签非 json）
+        m = re.search(r"```\w*\s*\n?(.*?)```", response, re.DOTALL)
+        if m:
+            content = m.group(1).strip()
+            # 去掉可能残留的语言标记行（如 "json\n{..."）
+            brace = content.find("{")
+            if brace > 0 and "\n" not in content[:brace]:
+                content = content[brace:]
+            return content
+
+        # 3) 找最外层 { ... }
+        first = response.find("{")
+        last = response.rfind("}")
+        if first != -1 and last > first:
+            return response[first : last + 1]
+
+        # 4) 原样返回
+        return response.strip()
+
     def _parse_response(self, response: str) -> AIAnalysisResult:
         """解析 AI 响应"""
         result = AIAnalysisResult(raw_response=response)
@@ -568,23 +603,7 @@ class AIAnalyzer:
             return result
 
         try:
-            json_str = response
-
-            if "```json" in response:
-                parts = response.split("```json", 1)
-                if len(parts) > 1:
-                    code_block = parts[1]
-                    end_idx = code_block.find("```")
-                    if end_idx != -1:
-                        json_str = code_block[:end_idx]
-                    else:
-                        json_str = code_block
-            elif "```" in response:
-                parts = response.split("```", 2)
-                if len(parts) >= 2:
-                    json_str = parts[1]
-
-            json_str = json_str.strip()
+            json_str = self._extract_json_str(response)
             if not json_str:
                 raise ValueError("提取的 JSON 内容为空")
 
