@@ -19,12 +19,11 @@ from trendradar.ai.tools import TUSHARE_TOOLS_SCHEMA, TushareToolExecutor
 @dataclass
 class AIAnalysisResult:
     """AI 分析结果"""
-    # 新版 5 核心板块
-    core_trends: str = ""                # 核心热点与舆情态势
-    sentiment_controversy: str = ""      # 舆论风向与争议
-    signals: str = ""                    # 异动与弱信号
-    rss_insights: str = ""               # RSS 深度洞察
-    outlook_strategy: str = ""           # 研判与策略建议
+    # 打板选股 4 核心字段
+    market_environment: str = ""         # 大盘环境与打板氛围
+    hot_sectors: str = ""                # 新闻驱动热点板块
+    target_stocks: str = ""              # 次日打板标的
+    risk_warnings: str = ""              # 风险提示
     standalone_summaries: Dict[str, str] = field(default_factory=dict)  # 独立展示区概括 {源ID: 概括}
 
     # 基础元数据
@@ -261,11 +260,15 @@ class AIAnalyzer:
         # 调用 AI API（使用 LiteLLM）
         try:
             response = self._call_ai(user_prompt)
-            result = self._parse_response(response)
 
-            # 如果配置未启用 RSS 分析，强制清空 AI 返回的 RSS 洞察
-            if not self.include_rss:
-                result.rss_insights = ""
+            if self.debug:
+                print("\n" + "=" * 80)
+                print("[AI 调试] AI 原始响应内容")
+                print("=" * 80)
+                print(response)
+                print("=" * 80 + "\n")
+
+            result = self._parse_response(response)
 
             # 如果配置未启用 standalone 分析，强制清空
             if not self.include_standalone:
@@ -587,12 +590,10 @@ class AIAnalyzer:
 
             data = json.loads(json_str)
 
-            # 新版字段解析
-            result.core_trends = data.get("core_trends", "")
-            result.sentiment_controversy = data.get("sentiment_controversy", "")
-            result.signals = data.get("signals", "")
-            result.rss_insights = data.get("rss_insights", "")
-            result.outlook_strategy = data.get("outlook_strategy", "")
+            result.market_environment = data.get("market_environment", "")
+            result.hot_sectors = data.get("hot_sectors", "")
+            result.target_stocks = data.get("target_stocks", "")
+            result.risk_warnings = data.get("risk_warnings", "")
 
             # 解析独立展示区概括
             summaries = data.get("standalone_summaries", {})
@@ -608,16 +609,15 @@ class AIAnalyzer:
             result.error = f"JSON 解析错误 (位置 {e.pos}): {e.msg}"
             if error_context:
                 result.error += f"，上下文: ...{error_context}..."
-            # 使用原始响应填充 core_trends，确保有输出
-            result.core_trends = response[:500] + "..." if len(response) > 500 else response
+            result.market_environment = response[:500] + "..." if len(response) > 500 else response
             result.success = True
         except (IndexError, KeyError, TypeError, ValueError) as e:
             result.error = f"响应解析错误: {type(e).__name__}: {str(e)}"
-            result.core_trends = response[:500] if len(response) > 500 else response
+            result.market_environment = response[:500] if len(response) > 500 else response
             result.success = True
         except Exception as e:
             result.error = f"解析时发生未知错误: {type(e).__name__}: {str(e)}"
-            result.core_trends = response[:500] if len(response) > 500 else response
+            result.market_environment = response[:500] if len(response) > 500 else response
             result.success = True
 
         return result

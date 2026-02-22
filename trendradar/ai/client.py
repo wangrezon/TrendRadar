@@ -102,7 +102,7 @@ class AIClient:
         messages: List[Dict],
         tools: List[Dict],
         tool_executor: Callable[[str, Dict], str],
-        max_rounds: int = 3,
+        max_rounds: int = 10,
         **kwargs
     ) -> str:
         """
@@ -146,7 +146,9 @@ class AIClient:
 
             # 如果模型没有请求工具调用，返回最终内容
             if not response_message.tool_calls:
-                return response_message.content or ""
+                content = response_message.content or ""
+                print(f"[AI] 模型响应完成（第 {round_idx + 1} 轮，无更多工具调用，{len(content)} 字符）")
+                return content
 
             # 模型请求了工具调用 —— 追加 assistant 消息
             messages.append(response_message)
@@ -164,6 +166,13 @@ class AIClient:
                 # 执行工具
                 tool_result = tool_executor(func_name, func_args)
 
+                # 打印工具返回结果（截断避免日志过长）
+                result_preview = tool_result[:800] if len(tool_result) > 800 else tool_result
+                print(f"[AI] 工具结果 #{round_idx + 1} ({func_name}): "
+                      f"[{len(tool_result)} 字符]\n{result_preview}")
+                if len(tool_result) > 800:
+                    print(f"[AI] ... 结果已截断，完整长度 {len(tool_result)} 字符")
+
                 # 追加工具结果消息
                 messages.append({
                     "tool_call_id": tool_call.id,
@@ -176,7 +185,9 @@ class AIClient:
         print(f"[AI] 已达最大工具调用轮数 ({max_rounds})，请求最终回答")
         params = self._build_params(messages, **kwargs)
         response = completion(**params)
-        return response.choices[0].message.content or ""
+        content = response.choices[0].message.content or ""
+        print(f"[AI] 模型最终响应完成（{len(content)} 字符）")
+        return content
 
     def validate_config(self) -> tuple[bool, str]:
         """

@@ -3,7 +3,7 @@
 Tushare 工具模块
 
 为 AI 分析器提供 Function Calling 工具，通过 Tushare 接口查询实时金融数据。
-支持概念板块行情、成分股、大盘指数和个股每日指标查询。
+支持概念板块行情、成分股、大盘指数、个股日线行情、个股每日指标和涨跌停统计查询。
 """
 
 import json
@@ -107,6 +107,59 @@ TUSHARE_TOOLS_SCHEMA: List[Dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_stock_daily",
+            "description": (
+                "获取个股日线行情数据，包括开盘、收盘、最高、最低、昨收、涨跌幅、成交量、成交额。"
+                "用于判断个股当日涨跌幅度、是否接近涨停、量能变化等。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ts_code": {
+                        "type": "string",
+                        "description": "股票代码，如 000001.SZ（平安银行）、600519.SH（贵州茅台）。",
+                    },
+                    "trade_date": {
+                        "type": "string",
+                        "description": "交易日期，YYYYMMDD 格式。不填则返回最近交易日数据。",
+                    },
+                },
+                "required": ["ts_code"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_limit_list",
+            "description": (
+                "获取每日涨跌停股票列表，包括封单比、封单额、首次封板时间、开板次数、"
+                "涨停强度等。用于查看当日哪些股票涨停/跌停及其封板质量。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "trade_date": {
+                        "type": "string",
+                        "description": "交易日期，YYYYMMDD 格式。不填则返回最近交易日数据。",
+                    },
+                    "limit_type": {
+                        "type": "string",
+                        "description": "涨跌停类型：U=涨停，D=跌停，Z=炸板。不填则返回全部。",
+                        "enum": ["U", "D", "Z"],
+                    },
+                    "ts_code": {
+                        "type": "string",
+                        "description": "股票代码，可选。填写则只返回该股票的涨跌停信息。",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
 ]
 
 
@@ -147,6 +200,8 @@ class TushareToolExecutor:
             "get_concept_sector_members": self.get_concept_sector_members,
             "get_index_daily": self.get_index_daily,
             "get_stock_daily_basic": self.get_stock_daily_basic,
+            "get_stock_daily": self.get_stock_daily,
+            "get_limit_list": self.get_limit_list,
         }
 
         func = dispatch.get(function_name)
@@ -332,6 +387,109 @@ class TushareToolExecutor:
             circ_mv = row.get("circ_mv")
             lines.append(f"总市值: {self._fmt_mv(total_mv)}")
             lines.append(f"流通市值: {self._fmt_mv(circ_mv)}")
+
+        return "\n".join(lines)
+
+    def get_stock_daily(
+        self,
+        ts_code: str,
+        trade_date: str = "",
+    ) -> str:
+        """
+        获取个股日线行情（OHLCV）。
+
+        Args:
+            ts_code: 股票代码（如 000001.SZ）
+            trade_date: 交易日期（YYYYMMDD）
+
+        Returns:
+            格式化的日线行情文本
+        """
+        params = {"ts_code": ts_code}
+        if trade_date:
+            params["trade_date"] = trade_date
+
+        df = self.api.daily(**params)
+
+        if df is None or df.empty:
+            return f"未查询到股票 {ts_code} 的日线行情数据。可能是非交易日或代码有误。"
+
+        df = df.head(10)
+
+        lines = [f"股票 {ts_code} 日线行情（共 {len(df)} 条）："]
+        lines.append("交易日 | 开盘 | 收盘 | 最高 | 最低 | 昨收 | 涨跌幅(%) | 成交量(手) | 成交额(千元)")
+        lines.append("-" * 100)
+        for _, row in df.iterrows():
+            pct = f"{row.get('pct_chg', 0):.2f}" if row.get("pct_chg") is not None else "-"
+            vol = f"{row.get('vol', 0):.0f}" if row.get("vol") is not None else "-"
+            amount = f"{row.get('amount', 0):.0f}" if row.get("amount") is not None else "-"
+            lines.append(
+                f"{row.get('trade_date', '-')} | "
+                f"{row.get('open', '-')} | {row.get('close', '-')} | "
+                f"{row.get('high', '-')} | {row.get('low', '-')} | "
+                f"{row.get('pre_close', '-')} | "
+                f"{pct} | {vol} | {amount}"
+            )
+
+        return "\n".join(lines)
+
+    def get_limit_list(
+        self,
+        trade_date: str = "",
+        limit_type: str = "",
+        ts_code: str = "",
+    ) -> str:
+        """
+        获取每日涨跌停统计。
+
+        Args:
+            trade_date: 交易日期（YYYYMMDD）
+            limit_type: U=涨停, D=跌停, Z=炸板
+            ts_code: 股票代码（可选，筛选单只股票）
+
+        Returns:
+            格式化的涨跌停列表文本
+        """
+        params = {}
+        if trade_date:
+            params["trade_date"] = trade_date
+        if limit_type:
+            params["limit_type"] = limit_type
+        if ts_code:
+            params["ts_code"] = ts_code
+
+        if not params:
+            return "错误：请至少提供交易日期（trade_date）或股票代码（ts_code）之一。"
+
+        fields = (
+            "ts_code,trade_date,name,close,pct_chg,amp,"
+            "fc_ratio,fl_ratio,fd_amount,first_time,last_time,"
+            "open_times,strth,limit"
+        )
+        df = self.api.limit_list_d(**params, fields=fields)
+
+        if df is None or df.empty:
+            return f"未查询到涨跌停数据（trade_date={trade_date}, limit_type={limit_type}）。可能是非交易日。"
+
+        df = df.head(50)
+
+        limit_label = {"U": "涨停", "D": "跌停", "Z": "炸板"}
+        lines = [f"涨跌停统计（共 {len(df)} 条）："]
+        lines.append("代码 | 名称 | 收盘 | 涨跌幅(%) | 封单比 | 封单额(万) | 首封时间 | 开板次数 | 强度 | 类型")
+        lines.append("-" * 110)
+        for _, row in df.iterrows():
+            pct = f"{row.get('pct_chg', 0):.2f}" if row.get("pct_chg") is not None else "-"
+            fc = f"{row.get('fc_ratio', 0):.2f}" if row.get("fc_ratio") is not None else "-"
+            fd = f"{row.get('fd_amount', 0):.0f}" if row.get("fd_amount") is not None else "-"
+            ft = row.get("first_time", "-") or "-"
+            ot = row.get("open_times", "-")
+            strth = f"{row.get('strth', 0):.1f}" if row.get("strth") is not None else "-"
+            lt = limit_label.get(row.get("limit", ""), row.get("limit", "-"))
+            lines.append(
+                f"{row.get('ts_code', '-')} | {row.get('name', '-')} | "
+                f"{row.get('close', '-')} | {pct} | {fc} | {fd} | "
+                f"{ft} | {ot} | {strth} | {lt}"
+            )
 
         return "\n".join(lines)
 

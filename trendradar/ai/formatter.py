@@ -80,28 +80,19 @@ def render_ai_analysis_markdown(result: AIAnalysisResult) -> str:
     if not result.success:
         return f"⚠️ AI 分析失败: {result.error}"
 
-    lines = ["**✨ AI 热点分析**", ""]
+    lines = ["**✨ AI 打板分析**", ""]
 
-    if result.core_trends:
-        lines.extend(["**核心热点态势**", _format_list_content(result.core_trends), ""])
+    if result.market_environment:
+        lines.extend(["**大盘环境与打板氛围**", _format_list_content(result.market_environment), ""])
 
-    if result.sentiment_controversy:
-        lines.extend(
-            ["**舆论风向争议**", _format_list_content(result.sentiment_controversy), ""]
-        )
+    if result.hot_sectors:
+        lines.extend(["**新闻驱动热点板块**", _format_list_content(result.hot_sectors), ""])
 
-    if result.signals:
-        lines.extend(["**异动与弱信号**", _format_list_content(result.signals), ""])
+    if result.target_stocks:
+        lines.extend(["**次日打板标的**", _format_list_content(result.target_stocks), ""])
 
-    if result.rss_insights:
-        lines.extend(
-            ["**RSS 深度洞察**", _format_list_content(result.rss_insights), ""]
-        )
-
-    if result.outlook_strategy:
-        lines.extend(
-            ["**研判策略建议**", _format_list_content(result.outlook_strategy), ""]
-        )
+    if result.risk_warnings:
+        lines.extend(["**风险提示**", _format_list_content(result.risk_warnings), ""])
 
     if result.standalone_summaries:
         summaries_text = _format_standalone_summaries(result.standalone_summaries)
@@ -116,28 +107,19 @@ def render_ai_analysis_feishu(result: AIAnalysisResult) -> str:
     if not result.success:
         return f"⚠️ AI 分析失败: {result.error}"
 
-    lines = ["**✨ AI 热点分析**", ""]
+    lines = ["**✨ AI 打板分析**", ""]
 
-    if result.core_trends:
-        lines.extend(["**核心热点态势**", _format_list_content(result.core_trends), ""])
+    if result.market_environment:
+        lines.extend(["**大盘环境与打板氛围**", _format_list_content(result.market_environment), ""])
 
-    if result.sentiment_controversy:
-        lines.extend(
-            ["**舆论风向争议**", _format_list_content(result.sentiment_controversy), ""]
-        )
+    if result.hot_sectors:
+        lines.extend(["**新闻驱动热点板块**", _format_list_content(result.hot_sectors), ""])
 
-    if result.signals:
-        lines.extend(["**异动与弱信号**", _format_list_content(result.signals), ""])
+    if result.target_stocks:
+        lines.extend(["**次日打板标的**", _format_list_content(result.target_stocks), ""])
 
-    if result.rss_insights:
-        lines.extend(
-            ["**RSS 深度洞察**", _format_list_content(result.rss_insights), ""]
-        )
-
-    if result.outlook_strategy:
-        lines.extend(
-            ["**研判策略建议**", _format_list_content(result.outlook_strategy), ""]
-        )
+    if result.risk_warnings:
+        lines.extend(["**风险提示**", _format_list_content(result.risk_warnings), ""])
 
     if result.standalone_summaries:
         summaries_text = _format_standalone_summaries(result.standalone_summaries)
@@ -152,33 +134,24 @@ def render_ai_analysis_dingtalk(result: AIAnalysisResult) -> str:
     if not result.success:
         return f"⚠️ AI 分析失败: {result.error}"
 
-    lines = ["### ✨ AI 热点分析", ""]
+    lines = ["### ✨ AI 打板分析", ""]
 
-    if result.core_trends:
+    if result.market_environment:
         lines.extend(
-            ["#### 核心热点态势", _format_list_content(result.core_trends), ""]
+            ["#### 大盘环境与打板氛围", _format_list_content(result.market_environment), ""]
         )
 
-    if result.sentiment_controversy:
+    if result.hot_sectors:
         lines.extend(
-            [
-                "#### 舆论风向争议",
-                _format_list_content(result.sentiment_controversy),
-                "",
-            ]
+            ["#### 新闻驱动热点板块", _format_list_content(result.hot_sectors), ""]
         )
 
-    if result.signals:
-        lines.extend(["#### 异动与弱信号", _format_list_content(result.signals), ""])
+    if result.target_stocks:
+        lines.extend(["#### 次日打板标的", _format_list_content(result.target_stocks), ""])
 
-    if result.rss_insights:
+    if result.risk_warnings:
         lines.extend(
-            ["#### RSS 深度洞察", _format_list_content(result.rss_insights), ""]
-        )
-
-    if result.outlook_strategy:
-        lines.extend(
-            ["#### 研判策略建议", _format_list_content(result.outlook_strategy), ""]
+            ["#### 风险提示", _format_list_content(result.risk_warnings), ""]
         )
 
     if result.standalone_summaries:
@@ -196,63 +169,51 @@ def render_ai_analysis_html(result: AIAnalysisResult) -> str:
             f'<div class="ai-error">⚠️ AI 分析失败: {_escape_html(result.error)}</div>'
         )
 
-    html_parts = ['<div class="ai-analysis">', "<h3>✨ AI 热点分析</h3>"]
+    html_parts = ['<div class="ai-analysis">', "<h3>✨ AI 打板分析</h3>"]
 
-    if result.core_trends:
-        content = _format_list_content(result.core_trends)
+    if result.market_environment:
+        content = _format_list_content(result.market_environment)
         content_html = _escape_html(content).replace("\n", "<br>")
         html_parts.extend(
             [
                 '<div class="ai-section">',
-                "<h4>核心热点态势</h4>",
+                "<h4>大盘环境与打板氛围</h4>",
                 f'<div class="ai-content">{content_html}</div>',
                 "</div>",
             ]
         )
 
-    if result.sentiment_controversy:
-        content = _format_list_content(result.sentiment_controversy)
+    if result.hot_sectors:
+        content = _format_list_content(result.hot_sectors)
         content_html = _escape_html(content).replace("\n", "<br>")
         html_parts.extend(
             [
                 '<div class="ai-section">',
-                "<h4>舆论风向争议</h4>",
+                "<h4>新闻驱动热点板块</h4>",
                 f'<div class="ai-content">{content_html}</div>',
                 "</div>",
             ]
         )
 
-    if result.signals:
-        content = _format_list_content(result.signals)
+    if result.target_stocks:
+        content = _format_list_content(result.target_stocks)
         content_html = _escape_html(content).replace("\n", "<br>")
         html_parts.extend(
             [
                 '<div class="ai-section">',
-                "<h4>异动与弱信号</h4>",
+                "<h4>次日打板标的</h4>",
                 f'<div class="ai-content">{content_html}</div>',
                 "</div>",
             ]
         )
 
-    if result.rss_insights:
-        content = _format_list_content(result.rss_insights)
+    if result.risk_warnings:
+        content = _format_list_content(result.risk_warnings)
         content_html = _escape_html(content).replace("\n", "<br>")
         html_parts.extend(
             [
                 '<div class="ai-section">',
-                "<h4>RSS 深度洞察</h4>",
-                f'<div class="ai-content">{content_html}</div>',
-                "</div>",
-            ]
-        )
-
-    if result.outlook_strategy:
-        content = _format_list_content(result.outlook_strategy)
-        content_html = _escape_html(content).replace("\n", "<br>")
-        html_parts.extend(
-            [
-                '<div class="ai-section ai-conclusion">',
-                "<h4>研判策略建议</h4>",
+                "<h4>风险提示</h4>",
                 f'<div class="ai-content">{content_html}</div>',
                 "</div>",
             ]
@@ -280,24 +241,19 @@ def render_ai_analysis_plain(result: AIAnalysisResult) -> str:
     if not result.success:
         return f"AI 分析失败: {result.error}"
 
-    lines = ["【✨ AI 热点分析】", ""]
+    lines = ["【✨ AI 打板分析】", ""]
 
-    if result.core_trends:
-        lines.extend(["[核心热点态势]", _format_list_content(result.core_trends), ""])
+    if result.market_environment:
+        lines.extend(["[大盘环境与打板氛围]", _format_list_content(result.market_environment), ""])
 
-    if result.sentiment_controversy:
-        lines.extend(
-            ["[舆论风向争议]", _format_list_content(result.sentiment_controversy), ""]
-        )
+    if result.hot_sectors:
+        lines.extend(["[新闻驱动热点板块]", _format_list_content(result.hot_sectors), ""])
 
-    if result.signals:
-        lines.extend(["[异动与弱信号]", _format_list_content(result.signals), ""])
+    if result.target_stocks:
+        lines.extend(["[次日打板标的]", _format_list_content(result.target_stocks), ""])
 
-    if result.rss_insights:
-        lines.extend(["[RSS 深度洞察]", _format_list_content(result.rss_insights), ""])
-
-    if result.outlook_strategy:
-        lines.extend(["[研判策略建议]", _format_list_content(result.outlook_strategy), ""])
+    if result.risk_warnings:
+        lines.extend(["[风险提示]", _format_list_content(result.risk_warnings), ""])
 
     if result.standalone_summaries:
         summaries_text = _format_standalone_summaries(result.standalone_summaries)
@@ -314,7 +270,7 @@ def get_ai_analysis_renderer(channel: str):
         "dingtalk": render_ai_analysis_dingtalk,
         "wework": render_ai_analysis_markdown,
         "telegram": render_ai_analysis_markdown,
-        "email": render_ai_analysis_html_rich,  # 邮件使用丰富样式，配合 HTML 报告的 CSS
+        "email": render_ai_analysis_html_rich,
         "ntfy": render_ai_analysis_markdown,
         "bark": render_ai_analysis_plain,
         "slack": render_ai_analysis_markdown,
@@ -327,7 +283,6 @@ def render_ai_analysis_html_rich(result: AIAnalysisResult) -> str:
     if not result:
         return ""
 
-    # 检查是否成功
     if not result.success:
         error_msg = result.error or "未知错误"
         return f"""
@@ -338,52 +293,43 @@ def render_ai_analysis_html_rich(result: AIAnalysisResult) -> str:
     ai_html = """
                 <div class="ai-section">
                     <div class="ai-section-header">
-                        <div class="ai-section-title">✨ AI 热点分析</div>
+                        <div class="ai-section-title">✨ AI 打板分析</div>
                         <span class="ai-section-badge">AI</span>
                     </div>"""
 
-    if result.core_trends:
-        content = _format_list_content(result.core_trends)
+    if result.market_environment:
+        content = _format_list_content(result.market_environment)
         content_html = _escape_html(content).replace("\n", "<br>")
         ai_html += f"""
                     <div class="ai-block">
-                        <div class="ai-block-title">核心热点态势</div>
+                        <div class="ai-block-title">大盘环境与打板氛围</div>
                         <div class="ai-block-content">{content_html}</div>
                     </div>"""
 
-    if result.sentiment_controversy:
-        content = _format_list_content(result.sentiment_controversy)
+    if result.hot_sectors:
+        content = _format_list_content(result.hot_sectors)
         content_html = _escape_html(content).replace("\n", "<br>")
         ai_html += f"""
                     <div class="ai-block">
-                        <div class="ai-block-title">舆论风向争议</div>
+                        <div class="ai-block-title">新闻驱动热点板块</div>
                         <div class="ai-block-content">{content_html}</div>
                     </div>"""
 
-    if result.signals:
-        content = _format_list_content(result.signals)
+    if result.target_stocks:
+        content = _format_list_content(result.target_stocks)
         content_html = _escape_html(content).replace("\n", "<br>")
         ai_html += f"""
                     <div class="ai-block">
-                        <div class="ai-block-title">异动与弱信号</div>
+                        <div class="ai-block-title">次日打板标的</div>
                         <div class="ai-block-content">{content_html}</div>
                     </div>"""
 
-    if result.rss_insights:
-        content = _format_list_content(result.rss_insights)
+    if result.risk_warnings:
+        content = _format_list_content(result.risk_warnings)
         content_html = _escape_html(content).replace("\n", "<br>")
         ai_html += f"""
                     <div class="ai-block">
-                        <div class="ai-block-title">RSS 深度洞察</div>
-                        <div class="ai-block-content">{content_html}</div>
-                    </div>"""
-
-    if result.outlook_strategy:
-        content = _format_list_content(result.outlook_strategy)
-        content_html = _escape_html(content).replace("\n", "<br>")
-        ai_html += f"""
-                    <div class="ai-block">
-                        <div class="ai-block-title">研判策略建议</div>
+                        <div class="ai-block-title">风险提示</div>
                         <div class="ai-block-content">{content_html}</div>
                     </div>"""
 
