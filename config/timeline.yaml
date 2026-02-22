@@ -384,7 +384,7 @@ presets:
 
 custom:
   name: "每日汇总"
-  description: "每日晚间20：00-22：00汇总。"
+  description: "每日晚间21:00-23:00汇总。"
 
   # 默认配置 ── 不命中任何时间段时的行为
   default:
@@ -401,8 +401,8 @@ custom:
   periods:
     evening_summary:
       name: "晚间汇总"
-      start: "20:00"
-      end: "21:00"
+      start: "21:00"
+      end: "23:00"
       analyze: true # 晚间做 AI 分析
       ai_mode: "daily" # AI 也汇总全天内容
       report_mode: "daily" # 切换为当日全部新闻汇总
