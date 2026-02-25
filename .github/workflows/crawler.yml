@@ -38,6 +38,15 @@ on:
     - cron: "30 * * * *"
 
   workflow_dispatch:
+    inputs:
+      run_mode:
+        description: "Run mode"
+        required: false
+        default: "full"
+        type: choice
+        options:
+          - "default"
+          - "full"
 
 concurrency:
   group: crawler-${{ github.ref_name }}
@@ -132,7 +141,7 @@ jobs:
           S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
           S3_ENDPOINT_URL: ${{ secrets.S3_ENDPOINT_URL }}
           S3_REGION: ${{ secrets.S3_REGION }}
+          SCHEDULE_ENABLED: ${{ github.event.inputs.run_mode == 'full' && 'false' || '' }}
           GITHUB_ACTIONS: true
-          # 调试：LiteLLM 详细日志
           LITELLM_LOG: DEBUG
         run: python -m trendradar
