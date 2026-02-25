@@ -247,27 +247,25 @@ class AIAnalyzer:
             standalone_content = self._prepare_standalone_content(standalone_data)
         user_prompt = user_prompt.replace("{standalone_content}", standalone_content)
 
-        if self.debug:
-            print("\n" + "=" * 80)
-            print("[AI 调试] 发送给 AI 的完整提示词")
-            print("=" * 80)
-            if self.system_prompt:
-                print("\n--- System Prompt ---")
-                print(self.system_prompt)
-            print("\n--- User Prompt ---")
-            print(user_prompt)
-            print("=" * 80 + "\n")
+        print("\n" + "=" * 80)
+        print("[AI 调试] 发送给 AI 的完整提示词")
+        print("=" * 80)
+        if self.system_prompt:
+            print("\n--- System Prompt ---")
+            print(self.system_prompt)
+        print("\n--- User Prompt ---")
+        print(user_prompt)
+        print("=" * 80 + "\n")
 
         # 调用 AI API（使用 LiteLLM）
         try:
             response = self._call_ai(user_prompt)
 
-            if self.debug:
-                print("\n" + "=" * 80)
-                print("[AI 调试] AI 原始响应内容")
-                print("=" * 80)
-                print(response)
-                print("=" * 80 + "\n")
+            print("\n" + "=" * 80)
+            print("[AI 调试] AI 原始响应内容")
+            print("=" * 80)
+            print(response)
+            print("=" * 80 + "\n")
 
             result = self._parse_response(response)
 

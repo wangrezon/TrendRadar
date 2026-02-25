@@ -145,6 +145,14 @@ class AIClient:
             response = completion(**params)
             response_message = response.choices[0].message
 
+            # 调试输出完整响应内容，便于排查问题
+            try:
+                print("[AI][debug] response_message.role:", getattr(response_message, "role", None))
+                print("[AI][debug] response_message.content:", getattr(response_message, "content", None))
+                print("[AI][debug] response_message.tool_calls:", getattr(response_message, "tool_calls", None))
+            except Exception as e:
+                print(f"[AI][debug] 打印 response_message 失败: {e}")
+
             # 如果模型没有请求工具调用，返回最终内容
             if not response_message.tool_calls:
                 content = response_message.content or ""
@@ -169,10 +177,10 @@ class AIClient:
                 tool_result = tool_executor(func_name, func_args)
 
                 # 打印工具返回结果（截断避免日志过长）
-                result_preview = tool_result[:200] if len(tool_result) > 200 else tool_result
+                result_preview = tool_result[:400] if len(tool_result) > 400 else tool_result
                 print(f"[AI] 工具结果 #{tool_call_seq} ({func_name}): "
                       f"[{len(tool_result)} 字符]\n{result_preview}")
-                if len(tool_result) > 200:
+                if len(tool_result) > 400:
                     print(f"[AI] ... 结果已截断，完整长度 {len(tool_result)} 字符")
 
                 # 追加工具结果消息
